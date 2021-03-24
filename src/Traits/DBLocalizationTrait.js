@@ -25,6 +25,7 @@ class DBLocalizationTrait {
     }
 
     async register (Model, customOptions) {
+        console.log(Antl.defaultLocale())
         const defaultOptions = {
             className: '', //Class of Model for Translation table
             primaryKey: Model.primaryKey, // Primary key in parent table
@@ -68,6 +69,7 @@ class DBLocalizationTrait {
              * @param {*} defaultValue - if any values for locales not found, return this value
              */
             Model.prototype.translate = async function (attribute, locale, defaultLocale = true, defaultValue = null) {
+
                 if (options.attributes.indexOf(attribute)==-1)throw Error('This field is not translatable')
                 if (!locale)throw new Error('You mest set locale for translation')
                 // Search for needed locale
@@ -76,7 +78,9 @@ class DBLocalizationTrait {
                     options.primaryKey,
                     options.foreignKey
                 )
+
                 let row = await query.where('locale', locale).first()
+                console.log(options.defacultLocale)
                 if (row)return row[attribute]
                 //Search for default locale
                 if (defaultLocale) {
@@ -85,10 +89,13 @@ class DBLocalizationTrait {
                         options.primaryKey,
                         options.foreignKey
                     )
-                    let row  = await query.where('locale', options.defacultLocale).first()
+                    let row  = await query.where('locale', options.defaultLocale).first()
                     if (row)return row[attribute]
                 }
-                return defaultValue
+                if (defaultValue){
+                    return defaultValue
+                }
+                return this[attribute]
             }
             /**
              * If used relation "translate", then after fetch one or many rows, attribute in parent model set with value for current locale

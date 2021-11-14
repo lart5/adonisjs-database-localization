@@ -24,8 +24,28 @@ class DBLocalizationTrait {
           }
     }
 
+    async localizeRows(modelInstance, options){
+        if (modelInstance.$persisted) {
+            let translations = modelInstance.getRelated('translations')
+            
+            if (!translations) {
+              await modelInstance.load('translations')
+              translations = modelInstance.getRelated('translations')
+            }
+            if (translations) {
+                for(let translation of translations.rows){
+                    for (let attribute of options.attributes) {
+                        modelInstance[`${attribute}_${translation['locale']}`] = translation[attribute]
+                    }
+                }
+            }else{
+                throw new Error('Error load translations')
+            }
+          }
+    }
+
+
     async register (Model, customOptions) {
-        console.log(Antl.defaultLocale())
         const defaultOptions = {
             className: '', //Class of Model for Translation table
             primaryKey: Model.primaryKey, // Primary key in parent table
@@ -80,7 +100,6 @@ class DBLocalizationTrait {
                 )
 
                 let row = await query.where('locale', locale).first()
-                console.log(options.defacultLocale)
                 if (row)return row[attribute]
                 //Search for default locale
                 if (defaultLocale) {
@@ -92,7 +111,7 @@ class DBLocalizationTrait {
                     let row  = await query.where('locale', options.defaultLocale).first()
                     if (row)return row[attribute]
                 }
-                if (defaultValue){
+                if (defaultValue!=null){
                     return defaultValue
                 }
                 return this[attribute]
@@ -103,12 +122,19 @@ class DBLocalizationTrait {
             Model.addHook('afterFind', async (modelInstance) => {
                 if (modelInstance.$relations && modelInstance.$relations.translation){
                     await that.localizeRow(modelInstance, options)
-                }                
+                }
+                if (modelInstance.$relations && modelInstance.$relations.translations){
+                    await that.localizeRows(modelInstance, options)
+                }
             })
             Model.addHook('afterFetch', async (modelInstances) => {
                 for (const modelInstance of modelInstances) {
                     if (modelInstance.$relations && modelInstance.$relations.translation){
                         await that.localizeRow(modelInstance, options)
+                    }
+
+                    if (modelInstance.$relations && modelInstance.$relations.translations){
+                        await that.localizeRows(modelInstance, options)
                     }
                 }
               })
